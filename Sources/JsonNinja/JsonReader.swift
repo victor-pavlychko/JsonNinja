@@ -22,41 +22,51 @@
 
 import Foundation
 
-@frozen public struct JsonReader<Source> where Source: JsonSource {
-    private let source: Source
+@frozen public struct JsonReader {
+    private let source: JsonSource
+}
 
-    public init(source: Source) {
-        self.source = source
+extension JsonReader {
+    public init(data: NSData) {
+        self.init(source: JsonSource(owner: data, baseAddress: data.bytes.assumingMemoryBound(to: UInt8.self), count: data.count))
+    }
+
+    public init(data: Data) {
+        self.init(data: data as NSData)
+    }
+
+    public init(contentsOf url: URL) throws {
+        try self.init(data: NSData(contentsOf: url, options: [.mappedIfSafe]))
+    }
+
+    public init(string: String) throws {
+        if let data = string.data(using: .utf8) {
+            self.init(data: data as NSData)
+        } else {
+            throw JsonError.unicodeError
+        }
     }
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func startReading() -> Source.Cursor {
+    public func startReading() -> JsonCursor {
         var cursor = source.start()
         skipWhiteSpace(at: &cursor)
         return cursor
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func isEnd(_ cursor: Source.Cursor) -> Bool {
+    public func isEnd(_ cursor: JsonCursor) -> Bool {
         return source.isEnd(cursor)
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func nextValue(at cursor: inout Source.Cursor) -> Bool {
+    public func nextValue(at cursor: inout JsonCursor) -> Bool {
         skipWhiteSpace(at: &cursor)
         return !source.isEnd(cursor)
     }
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func peekValueType(at cursor: Source.Cursor) throws -> JsonValueType {
+    public func peekValue(at cursor: JsonCursor) throws -> JsonValue.Kind {
         switch try source.asciiCodePoint(at: cursor) {
         case .doubleQuotes:
             return .string
@@ -82,9 +92,7 @@ extension JsonReader {
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipValue(at cursor: inout Source.Cursor) throws {
+    public func skipValue(at cursor: inout JsonCursor) throws {
         switch try source.asciiCodePoint(at: cursor) {
         case .doubleQuotes:
             return try skipString(at: &cursor)
@@ -113,10 +121,8 @@ extension JsonReader {
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func readValue(at cursor: inout Source.Cursor) throws -> JsonValue<Source> {
-        switch try peekValueType(at: cursor) {
+    public func readValue(at cursor: inout JsonCursor) throws -> JsonValue {
+        switch try peekValue(at: cursor) {
         case .string:
             return try .string(readString(at: &cursor))
 
@@ -140,9 +146,7 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipString(at cursor: inout Source.Cursor) throws {
+    public func skipString(at cursor: inout JsonCursor) throws {
         try skipCodePoint(.doubleQuotes, at: &cursor)
 
         while true {
@@ -190,9 +194,7 @@ extension JsonReader {
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func readString(at cursor: inout Source.Cursor) throws -> String {
+    public func readString(at cursor: inout JsonCursor) throws -> String {
         try skipCodePoint(.doubleQuotes, at: &cursor)
 
         var result = ""
@@ -224,9 +226,7 @@ extension JsonReader {
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    private func readEscapeSequence(at cursor: inout Source.Cursor) throws -> String {
+    private func readEscapeSequence(at cursor: inout JsonCursor) throws -> String {
         switch try source.asciiCodePoint(at: cursor) {
         case .doubleQuotes:
             source.advance(&cursor)
@@ -282,9 +282,7 @@ extension JsonReader {
     }
 
     @_transparent
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    private func readUnicodeCodeUnit(at cursor: inout Source.Cursor) throws -> UInt16 {
+    private func readUnicodeCodeUnit(at cursor: inout JsonCursor) throws -> UInt16 {
         var result: UInt16 = 0
         result = try (result << 4) | readUnicodeHexDigit(at: &cursor)
         result = try (result << 4) | readUnicodeHexDigit(at: &cursor)
@@ -294,9 +292,7 @@ extension JsonReader {
     }
 
     @_transparent
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    private func readUnicodeHexDigit(at cursor: inout Source.Cursor) throws -> UInt16 {
+    private func readUnicodeHexDigit(at cursor: inout JsonCursor) throws -> UInt16 {
         let digit = try source.asciiCodePoint(at: cursor)
 
         switch digit {
@@ -319,9 +315,7 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipNumber(at cursor: inout Source.Cursor) throws {
+    public func skipNumber(at cursor: inout JsonCursor) throws {
         switch try source.asciiCodePoint(at: cursor) {
         case .hyphen:
             source.advance(&cursor)
@@ -432,9 +426,7 @@ extension JsonReader {
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func readNumber(at cursor: inout Source.Cursor) throws -> Double {
+    public func readNumber(at cursor: inout JsonCursor) throws -> Double {
         let start = cursor
         try skipNumber(at: &cursor)
 
@@ -447,18 +439,14 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipObject(at cursor: inout Source.Cursor) throws {
+    public func skipObject(at cursor: inout JsonCursor) throws {
         while try nextObjectProperty(at: &cursor) {
             try skipObjectPropertyName(at: &cursor)
             try skipValue(at: &cursor)
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func nextObjectProperty(at cursor: inout Source.Cursor) throws -> Bool {
+    public func nextObjectProperty(at cursor: inout JsonCursor) throws -> Bool {
         switch try source.asciiCodePoint(at: cursor) {
         case .openingBrace:
             source.advance(&cursor)
@@ -492,18 +480,14 @@ extension JsonReader {
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipObjectPropertyName(at cursor: inout Source.Cursor) throws {
+    public func skipObjectPropertyName(at cursor: inout JsonCursor) throws {
         try skipString(at: &cursor)
         skipWhiteSpace(at: &cursor)
         try skipCodePoint(.colon, at: &cursor)
         skipWhiteSpace(at: &cursor)
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func readObjectPropertyName(at cursor: inout Source.Cursor) throws -> String {
+    public func readObjectPropertyName(at cursor: inout JsonCursor) throws -> String {
         let result = try readString(at: &cursor)
         skipWhiteSpace(at: &cursor)
         try skipCodePoint(.colon, at: &cursor)
@@ -513,17 +497,13 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipArray(at cursor: inout Source.Cursor) throws {
+    public func skipArray(at cursor: inout JsonCursor) throws {
         while try nextArrayElement(at: &cursor) {
             try skipValue(at: &cursor)
         }
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func nextArrayElement(at cursor: inout Source.Cursor) throws -> Bool {
+    public func nextArrayElement(at cursor: inout JsonCursor) throws -> Bool {
         switch try source.asciiCodePoint(at: cursor) {
         case .openingBracket:
             source.advance(&cursor)
@@ -559,18 +539,14 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipTrue(at cursor: inout Source.Cursor) throws {
+    public func skipTrue(at cursor: inout JsonCursor) throws {
         try skipCodePoint(.lowercaseT, at: &cursor)
         try skipCodePoint(.lowercaseR, at: &cursor)
         try skipCodePoint(.lowercaseU, at: &cursor)
         try skipCodePoint(.lowercaseE, at: &cursor)
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipFalse(at cursor: inout Source.Cursor) throws {
+    public func skipFalse(at cursor: inout JsonCursor) throws {
         try skipCodePoint(.lowercaseF, at: &cursor)
         try skipCodePoint(.lowercaseA, at: &cursor)
         try skipCodePoint(.lowercaseL, at: &cursor)
@@ -578,9 +554,7 @@ extension JsonReader {
         try skipCodePoint(.lowercaseE, at: &cursor)
     }
 
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func readBool(at cursor: inout Source.Cursor) throws -> Bool {
+    public func readBool(at cursor: inout JsonCursor) throws -> Bool {
         switch try source.asciiCodePoint(at: cursor) {
         case .lowercaseT:
             try skipTrue(at: &cursor)
@@ -597,9 +571,7 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    public func skipNull(at cursor: inout Source.Cursor) throws {
+    public func skipNull(at cursor: inout JsonCursor) throws {
         try skipCodePoint(.lowercaseN, at: &cursor)
         try skipCodePoint(.lowercaseU, at: &cursor)
         try skipCodePoint(.lowercaseL, at: &cursor)
@@ -608,9 +580,7 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    private func skipWhiteSpace(at cursor: inout Source.Cursor) {
+    private func skipWhiteSpace(at cursor: inout JsonCursor) {
         while true {
             if source.isEnd(cursor) {
                 return
@@ -630,9 +600,7 @@ extension JsonReader {
     }
 
     @_transparent
-    @_specialize(where Source == JsonSourcePointer)
-    @_specialize(where Source == JsonSourceWrapper)
-    private func skipCodePoint(_ codePoint: UInt8, at cursor: inout Source.Cursor) throws {
+    private func skipCodePoint(_ codePoint: UInt8, at cursor: inout JsonCursor) throws {
         if try source.asciiCodePoint(at: cursor) == codePoint {
             source.advance(&cursor)
         } else {

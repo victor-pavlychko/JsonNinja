@@ -11,11 +11,8 @@ let package = Package(
     targets: [
         .target(
             name: "JsonNinja",
-            dependencies: []
-
-            // Looks like we no longer need @_specialize with cross-module optimization
-            // Need to research and test more.
-            // swiftSettings: [.unsafeFlags(["-cross-module-optimization"])]
+            dependencies: [],
+            swiftSettings: [.crossModuleOptimization]
         ),
         .testTarget(
             name: "JsonNinjaCoreTests",
@@ -28,3 +25,7 @@ let package = Package(
         ),
     ]
 )
+
+extension SwiftSetting {
+    static let crossModuleOptimization: SwiftSetting  = .unsafeFlags(["-cross-module-optimization"])
+}

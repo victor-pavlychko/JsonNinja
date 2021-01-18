@@ -22,11 +22,14 @@
 
 import Foundation
 
-@frozen public enum JsonValueType: Equatable {
-    case string
-    case number
-    case object
-    case array
-    case bool
-    case null
+@frozen public struct JsonCursor: Equatable, CustomStringConvertible {
+    internal var offset: Int
+
+    public var debugOffset: Int {
+        return offset
+    }
+
+    public var description: String {
+        return "<JsonSourcePointer.Cursor@\(offset)>"
+    }
 }

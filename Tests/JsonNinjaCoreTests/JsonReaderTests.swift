@@ -27,18 +27,18 @@ import JsonNinja
 final class JsonReaderTests: XCTestCase {
     func testEmptyObject() throws {
         let subject = "{}"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .object)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .object)
         XCTAssertEqual(try reader.nextObjectProperty(at: &cursor), false)
         XCTAssertTrue(reader.isEnd(cursor))
     }
 
     func testMultiStringObject() throws {
         let subject = "{ \"hello\": \"world\", \"swift\": \"rocks\" }"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .object)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .object)
         XCTAssertEqual(try reader.nextObjectProperty(at: &cursor), true)
         XCTAssertEqual(try reader.readObjectPropertyName(at: &cursor), "hello")
         XCTAssertEqual(try reader.readString(at: &cursor), "world")
@@ -51,9 +51,9 @@ final class JsonReaderTests: XCTestCase {
 
     func testStringWithSpacesAtStart() throws {
         let subject = "{\"title\" : \" hello world!!\" }"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .object)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .object)
         XCTAssertEqual(try reader.nextObjectProperty(at: &cursor), true)
         XCTAssertEqual(try reader.readObjectPropertyName(at: &cursor), "title")
         XCTAssertEqual(try reader.readString(at: &cursor), " hello world!!")
@@ -63,18 +63,18 @@ final class JsonReaderTests: XCTestCase {
 
     func testEmptyArray() throws {
         let subject = "[]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), false)
         XCTAssertTrue(reader.isEnd(cursor))
     }
 
     func testMultiStringArray() throws {
         let subject = "[\"hello\", \"swift⚡️\"]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readString(at: &cursor), "hello")
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
@@ -86,9 +86,9 @@ final class JsonReaderTests: XCTestCase {
     func testUnicodeString() throws {
         /// Ģ has the same LSB as quotation mark " (U+0022) so test guarding against this case
         let subject = "[\"unicode\", \"Ģ\", \"😢\"]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readString(at: &cursor), "unicode")
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
@@ -101,9 +101,9 @@ final class JsonReaderTests: XCTestCase {
 
     func testValues() throws {
         let subject = "[true, false, \"hello\", null, {}, []]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readValue(at: &cursor), true)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
@@ -113,10 +113,10 @@ final class JsonReaderTests: XCTestCase {
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readValue(at: &cursor), nil)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .object)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .object)
         XCTAssertEqual(try reader.nextObjectProperty(at: &cursor), false)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), false)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), false)
         XCTAssertTrue(reader.isEnd(cursor))
@@ -124,9 +124,9 @@ final class JsonReaderTests: XCTestCase {
 
     func testNumbers() throws {
         let subject = "[1, -1, 1.3, -1.3, 1e3, 1E-3, 10, -12.34e56, 12.34e-56, 12.34e+6, 0.002, 0.0043e+4]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readValue(at: &cursor), 1)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
@@ -157,9 +157,9 @@ final class JsonReaderTests: XCTestCase {
 
     func testSimpleEscapeSequences() throws {
         let subject = "[\"\\\"\", \"\\\\\", \"\\/\", \"\\b\", \"\\f\", \"\\n\", \"\\r\", \"\\t\"]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readString(at: &cursor), "\"")
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
@@ -182,9 +182,9 @@ final class JsonReaderTests: XCTestCase {
 
     func testUnicodeEscapeSequence() throws {
         let subject = "[\"\\u2728\"]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readString(at: &cursor), "✨")
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), false)
@@ -193,9 +193,9 @@ final class JsonReaderTests: XCTestCase {
 
     func testUnicodeSurrogatePairEscapeSequence() throws {
         let subject = "[\"\\uD834\\udd1E\"]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
-        XCTAssertEqual(try reader.peekValueType(at: cursor), .array)
+        XCTAssertEqual(try reader.peekValue(at: cursor), .array)
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), true)
         XCTAssertEqual(try reader.readString(at: &cursor), "\u{1D11E}")
         XCTAssertEqual(try reader.nextArrayElement(at: &cursor), false)
@@ -204,7 +204,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testAllowFragments() throws {
         let subject = "3"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertEqual(try reader.readValue(at: &cursor), 3)
         XCTAssertTrue(reader.isEnd(cursor))
@@ -212,7 +212,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testUnterminatedObjectString() throws {
         let subject = "{\"}"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedEndOfStream)
@@ -222,7 +222,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testMissingObjectKey() throws {
         let subject = "{3}"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedSymbol)
@@ -231,7 +231,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testUnexpectedEndOfFile() throws {
         let subject = "{"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedEndOfStream)
@@ -240,7 +240,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testInvalidValueInObject() throws {
         let subject = "{\"error\":}"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedSymbol)
@@ -249,7 +249,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testInvalidValueIncorrectSeparatorInObject() throws {
         let subject = "{\"missing\";}"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedSymbol)
@@ -258,7 +258,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testInvalidValueInArray() throws {
         let subject = "[,"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedSymbol)
@@ -267,7 +267,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testBadlyFormedArray() throws {
         let subject = "[2b4]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedSymbol)
@@ -276,7 +276,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testInvalidEscapeSequence() throws {
         let subject = "[\"\\e\"]"
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.badEscapeSequence)
@@ -285,7 +285,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testUnicodeMissingLeadingSurrogate() throws {
         let subject = "\"\\uDFF3\""
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(_ = try reader.readString(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.badUnicodeEscapeSequence)
@@ -294,7 +294,7 @@ final class JsonReaderTests: XCTestCase {
 
     func testUnicodeMissingTrailingSurrogate() throws {
         let subject = "\"\\uD834\""
-        let reader = try JsonReader(source: JsonSourceWrapper(string: subject))
+        let reader = try JsonReader(string: subject)
         var cursor = reader.startReading()
         XCTAssertThrowsError(_ = try reader.readString(at: &cursor)) {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedSymbol)

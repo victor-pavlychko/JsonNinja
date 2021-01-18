@@ -22,11 +22,11 @@
 
 import Foundation
 
-@frozen public enum JsonValue<Source>: Equatable where Source: JsonSource {
+@frozen public enum JsonValue: Equatable {
     case string(String)
     case number(Double)
-    case object(Source.Cursor)
-    case array(Source.Cursor)
+    case object(JsonCursor)
+    case array(JsonCursor)
     case bool(Bool)
     case null
 }
@@ -62,7 +62,16 @@ extension JsonValue: ExpressibleByNilLiteral {
 }
 
 extension JsonValue {
-    public var type: JsonValueType {
+    @frozen public enum Kind: Equatable {
+        case string
+        case number
+        case object
+        case array
+        case bool
+        case null
+    }
+
+    public var kind: Kind {
         switch self {
         case .string:
             return .string

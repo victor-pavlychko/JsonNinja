@@ -22,12 +22,55 @@
 
 import Foundation
 
-public protocol JsonSource {
-    associatedtype Cursor: Equatable
-    func start() -> Cursor
-    func isEnd(_ cursor: Cursor) -> Bool
-    func advance(_ cursor: inout Cursor)
-    func asciiCodePoint(at cursor: Cursor) throws -> UInt8
-    func uncheckedAsciiCodePoint(at cursor: Cursor) -> UInt8
-    func uncheckedUnicodeString(from: Cursor, to: Cursor) throws -> String
+@usableFromInline
+@frozen internal struct JsonSource {
+    private let owner: AnyObject
+    private let baseAddress: UnsafePointer<UInt8>
+    private let count: Int
+
+    internal init(owner: AnyObject, baseAddress: UnsafePointer<UInt8>, count: Int) {
+        self.owner = owner
+        self.baseAddress = baseAddress
+        self.count = count
+    }
+}
+
+extension JsonSource {
+    @_transparent
+    internal func start() -> JsonCursor {
+        return JsonCursor(offset: 0)
+    }
+
+    @_transparent
+    internal func isEnd(_ cursor: JsonCursor) -> Bool {
+        return cursor.offset == count
+    }
+
+    @_transparent
+    internal func advance(_ cursor: inout JsonCursor) {
+        cursor.offset += 1
+    }
+
+    @_transparent
+    internal func asciiCodePoint(at cursor: JsonCursor) throws -> UInt8 {
+        if cursor.offset < count {
+            return baseAddress[cursor.offset]
+        } else {
+            throw JsonError.unexpectedEndOfStream
+        }
+    }
+
+    @_transparent
+    internal func uncheckedAsciiCodePoint(at cursor: JsonCursor) -> UInt8 {
+        return baseAddress[cursor.offset]
+    }
+
+    @_transparent
+    internal func uncheckedUnicodeString(from: JsonCursor, to: JsonCursor) throws -> String {
+        if let result = String(data: Data(bytes: baseAddress.advanced(by: from.offset), count: to.offset - from.offset), encoding: .utf8) {
+            return result
+        } else {
+            throw JsonError.unicodeError
+        }
+    }
 }

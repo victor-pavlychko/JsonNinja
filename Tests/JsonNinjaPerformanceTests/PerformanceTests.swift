@@ -27,35 +27,11 @@ import XCTest
 import JsonNinja
 
 final class PerformanceTests: XCTestCase {
-    func testCustomBaselinePerformance() throws {
+    func testCustomPerformance() throws {
         let data = try Data(contentsOf: Bundle.module.resourceURL!.appendingPathComponent("Data/pokemon.json"))
 
         measure {
-            data.withUnsafeBytes { buffer in
-                let reader = JsonReaderBaseline(source: JsonSourcePointer(buffer: buffer))
-                var cursor = reader.startReading()
-                try! reader.skipValue(at: &cursor)
-            }
-        }
-    }
-
-    func testCustomGenericPointerPerformance() throws {
-        let data = try Data(contentsOf: Bundle.module.resourceURL!.appendingPathComponent("Data/pokemon.json"))
-
-        measure {
-            data.withUnsafeBytes { buffer in
-                let reader = JsonReader(source: JsonSourcePointer(buffer: buffer))
-                var cursor = reader.startReading()
-                try! reader.skipValue(at: &cursor)
-            }
-        }
-    }
-
-    func testCustomGenericDataPerformance() throws {
-        let data = try Data(contentsOf: Bundle.module.resourceURL!.appendingPathComponent("Data/pokemon.json"))
-
-        measure {
-            let reader = JsonReader(source: JsonSourceWrapper(data: data as NSData))
+            let reader = JsonReader(data: data)
             var cursor = reader.startReading()
             try! reader.skipValue(at: &cursor)
         }
