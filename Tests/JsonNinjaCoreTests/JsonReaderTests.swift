@@ -303,4 +303,34 @@ final class JsonReaderTests: XCTestCase {
             XCTAssertEqual($0 as? JsonError, JsonError.unexpectedSymbol)
         }
     }
+
+    func testReadingOffTheEndOfBuffers() throws {
+        var data = "12345679".data(using: .utf8)!
+        try data.withUnsafeMutableBytes { bytes in
+            let slice = Data(bytesNoCopy: bytes.baseAddress!, count: 1, deallocator: .none)
+            let reader = JsonReader(data: slice)
+            var cursor = reader.startReading()
+            XCTAssertEqual(try reader.readNumber(at: &cursor), 1)
+        }
+    }
+
+    func testBailOnDeepValidStructure() throws {
+        let repetition = 8000
+        let subject = String(repeating: "[", count: repetition) +  String(repeating: "]", count: repetition)
+        let reader = try JsonReader(string: subject)
+        var cursor = reader.startReading()
+        XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
+            XCTAssertEqual($0 as? JsonError, JsonError.depthLimitReached)
+        }
+    }
+
+    func testBailOnDeepInvalidStructure() throws {
+        let repetition = 8000
+        let subject = String(repeating: "[", count: repetition) +  String(repeating: "]", count: repetition)
+        let reader = try JsonReader(string: subject)
+        var cursor = reader.startReading()
+        XCTAssertThrowsError(try reader.skipValue(at: &cursor)) {
+            XCTAssertEqual($0 as? JsonError, JsonError.depthLimitReached)
+        }
+    }
 }

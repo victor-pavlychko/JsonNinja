@@ -127,7 +127,6 @@ extension JsonWriter {
         }
     }
 
-    @_transparent
     private mutating func writeHexDigit(_ digit: UInt8) {
         switch digit {
         case 0x0 ... 0x9:
@@ -141,22 +140,21 @@ extension JsonWriter {
 }
 
 extension JsonWriter {
-    public mutating func writeNumber(_ value: Int) {
+    public mutating func writeNumber<Number>(_ value: Number) where Number: BinaryInteger & LosslessStringConvertible {
         var string = value.description
+
         string.withUTF8 {
             sink.write($0)
         }
     }
 
-    public mutating func writeNumber(_ value: UInt) {
+    public mutating func writeNumber<Number>(_ value: Number) where Number: BinaryFloatingPoint & LosslessStringConvertible {
         var string = value.description
-        string.withUTF8 {
-            sink.write($0)
-        }
-    }
 
-    public mutating func writeNumber(_ value: Double) {
-        var string = value.description
+        if string.hasSuffix(".0") {
+            string.removeLast(2)
+        }
+
         string.withUTF8 {
             sink.write($0)
         }
@@ -164,12 +162,6 @@ extension JsonWriter {
 }
 
 extension JsonWriter {
-    public mutating func writeArray(_ writeContents: (inout JsonWriter) throws -> Void) rethrows {
-        writeArrayBegin()
-        try writeContents(&self)
-        writeArrayEnd()
-    }
-
     public mutating func writeArrayBegin() {
         sink.write(.openingBracket)
         isFirstEntry = true
@@ -189,12 +181,6 @@ extension JsonWriter {
 }
 
 extension JsonWriter {
-    public mutating func writeObject(_ writeContents: (inout JsonWriter) throws -> Void) rethrows {
-        writeObjectBegin()
-        try writeContents(&self)
-        writeObjectEnd()
-    }
-
     public mutating func writeObjectBegin() {
         sink.write(.openingBrace)
         isFirstEntry = true
