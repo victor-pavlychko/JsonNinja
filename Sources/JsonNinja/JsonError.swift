@@ -23,6 +23,8 @@
 import Foundation
 
 public enum JsonError: Error {
+    case depthLimitReached
+    case unescapedControlCharacter
     case unexpectedSymbol
     case unexpectedEndOfStream
     case badEscapeSequence
@@ -33,6 +35,10 @@ public enum JsonError: Error {
 extension JsonError: CustomStringConvertible {
     public var description: String {
         switch self {
+        case .depthLimitReached:
+            return "JSON Error: depth limit reached"
+        case .unescapedControlCharacter:
+            return "JSON Error: unescaped control character"
         case .unexpectedSymbol:
             return "JSON Error: unexpected symbol"
         case .unexpectedEndOfStream:

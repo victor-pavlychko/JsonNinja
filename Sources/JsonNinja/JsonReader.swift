@@ -27,6 +27,10 @@ import Foundation
 }
 
 extension JsonReader {
+    public static var defaultDepthLimit = 1024
+}
+
+extension JsonReader {
     public init(data: NSData) {
         self.init(source: JsonSource(owner: data, baseAddress: data.bytes.assumingMemoryBound(to: UInt8.self), count: data.count))
     }
@@ -92,32 +96,67 @@ extension JsonReader {
         }
     }
 
-    public func skipValue(at cursor: inout JsonCursor) throws {
-        switch try source.asciiCodePoint(at: cursor) {
-        case .doubleQuotes:
-            return try skipString(at: &cursor)
+    public func skipValue(at cursor: inout JsonCursor, depthLimit: Int = defaultDepthLimit) throws {
+        enum State {
+            case object
+            case array
+        }
 
-        case .hyphen,
-             .digitZero ... .digitNine:
-            return try skipNumber(at: &cursor)
+        var stack: [State] = []
 
-        case .openingBrace:
-            return try skipObject(at: &cursor)
+        while true {
+            switch try source.asciiCodePoint(at: cursor) {
+            case .doubleQuotes:
+                try skipString(at: &cursor)
 
-        case .openingBracket:
-            return try skipArray(at: &cursor)
+            case .hyphen,
+                 .digitZero ... .digitNine:
+                try skipNumber(at: &cursor)
 
-        case .lowercaseT:
-            return try skipTrue(at: &cursor)
+            case .openingBrace:
+                stack.append(.object)
 
-        case .lowercaseF:
-            return try skipFalse(at: &cursor)
+            case .openingBracket:
+                stack.append(.array)
 
-        case .lowercaseN:
-            return try skipNull(at: &cursor)
+            case .lowercaseT:
+                try skipTrue(at: &cursor)
 
-        default:
-            throw JsonError.unexpectedSymbol
+            case .lowercaseF:
+                try skipFalse(at: &cursor)
+
+            case .lowercaseN:
+                try skipNull(at: &cursor)
+
+            default:
+                throw JsonError.unexpectedSymbol
+            }
+
+            guard stack.count <= depthLimit else {
+                throw JsonError.depthLimitReached
+            }
+
+            unwind: while true {
+                switch stack.last {
+                case .some(.object):
+                    if try nextObjectProperty(at: &cursor) {
+                        try skipObjectPropertyName(at: &cursor)
+                        break unwind
+                    } else {
+                        stack.removeLast()
+                    }
+
+                case .some(.array):
+                    if try nextArrayElement(at: &cursor) {
+                        break unwind
+                    } else {
+                        stack.removeLast()
+                    }
+
+                case .none:
+                    return
+                }
+            }
         }
     }
 
@@ -188,6 +227,9 @@ extension JsonReader {
                 source.advance(&cursor)
                 return
 
+            case 0x00 ..< 0x20:
+                throw JsonError.unescapedControlCharacter
+
             default:
                 source.advance(&cursor)
             }
@@ -219,6 +261,9 @@ extension JsonReader {
 
                 source.advance(&cursor)
                 return result
+
+            case 0x00 ..< 0x20:
+                throw JsonError.unescapedControlCharacter
 
             default:
                 source.advance(&cursor)
@@ -439,10 +484,10 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    public func skipObject(at cursor: inout JsonCursor) throws {
+    public func skipObject(at cursor: inout JsonCursor, depthLimit: Int = defaultDepthLimit) throws {
         while try nextObjectProperty(at: &cursor) {
             try skipObjectPropertyName(at: &cursor)
-            try skipValue(at: &cursor)
+            try skipValue(at: &cursor, depthLimit: depthLimit)
         }
     }
 
@@ -497,9 +542,9 @@ extension JsonReader {
 }
 
 extension JsonReader {
-    public func skipArray(at cursor: inout JsonCursor) throws {
+    public func skipArray(at cursor: inout JsonCursor, depthLimit: Int = defaultDepthLimit) throws {
         while try nextArrayElement(at: &cursor) {
-            try skipValue(at: &cursor)
+            try skipValue(at: &cursor, depthLimit: depthLimit)
         }
     }
 

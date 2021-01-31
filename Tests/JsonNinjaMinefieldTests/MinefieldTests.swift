@@ -24,13 +24,14 @@ import Foundation
 import XCTest
 import JsonNinja
 
+// Test suite from article
 // Parsing JSON is a Minefield 💣
 // http://seriot.ch/parsing_json.php
 // https://github.com/nst/JSONTestSuite
 
 final class MinefieldTests: XCTestCase {
-    func testEmptyObject() {
-        for testCase in Self.testCases {
+    func testMinefield() {
+        for testCase in Self.testCases where testCase.skip == nil {
             switch testCase.input.first! {
             case "i":
                 XCTAssertTrue(executeTestCase(testCase), file: testCase.file, line: testCase.line)
@@ -46,7 +47,6 @@ final class MinefieldTests: XCTestCase {
 
     private func executeTestCase(_ testCase: TestCase) -> Bool {
         do {
-            print(testCase.input)
             let data = try Data(contentsOf: Self.dataDirectory.appendingPathComponent(testCase.input))
             let reader = JsonReader(data: data)
             var cursor = reader.startReading()
@@ -62,11 +62,13 @@ final class MinefieldTests: XCTestCase {
 
     private struct TestCase {
         let input: String
+        let skip: String?
         let file: StaticString
         let line: UInt
 
-        init(input: String, file: StaticString = #filePath, line: UInt = #line) {
+        init(input: String, skip: String? = nil, file: StaticString = #filePath, line: UInt = #line) {
             self.input = input
+            self.skip = skip
             self.file = file
             self.line = line
         }
@@ -102,12 +104,12 @@ final class MinefieldTests: XCTestCase {
         TestCase(input: "i_string_overlong_sequence_6_bytes.json"),
         TestCase(input: "i_string_truncated-utf-8.json"),
         TestCase(input: "i_string_UTF-8_invalid_sequence.json"),
-        TestCase(input: "i_string_UTF-16LE_with_BOM.json"),
+        TestCase(input: "i_string_UTF-16LE_with_BOM.json", skip: "JsonNinja supports UTF-8 only"),
         TestCase(input: "i_string_UTF8_surrogate_U+D800.json"),
-        TestCase(input: "i_string_utf16BE_no_BOM.json"),
-        TestCase(input: "i_string_utf16LE_no_BOM.json"),
+        TestCase(input: "i_string_utf16BE_no_BOM.json", skip: "JsonNinja supports UTF-8 only"),
+        TestCase(input: "i_string_utf16LE_no_BOM.json", skip: "JsonNinja supports UTF-8 only"),
         TestCase(input: "i_structure_500_nested_arrays.json"),
-        TestCase(input: "i_structure_UTF-8_BOM_empty_object.json"),
+        TestCase(input: "i_structure_UTF-8_BOM_empty_object.json", skip: "JsonNinja supports UTF-8 only"),
         TestCase(input: "n_array_1_true_without_comma.json"),
         TestCase(input: "n_array_a_invalid_utf8.json"),
         TestCase(input: "n_array_colon_instead_of_comma.json"),
@@ -247,7 +249,7 @@ final class MinefieldTests: XCTestCase {
         TestCase(input: "n_string_unescaped_tab.json"),
         TestCase(input: "n_string_unicode_CapitalU.json"),
         TestCase(input: "n_string_with_trailing_garbage.json"),
-//        TestCase(input: "n_structure_100000_opening_arrays.json"),
+        TestCase(input: "n_structure_100000_opening_arrays.json"),
         TestCase(input: "n_structure_angle_bracket_..json"),
         TestCase(input: "n_structure_angle_bracket_null.json"),
         TestCase(input: "n_structure_array_trailing_garbage.json"),
@@ -271,7 +273,7 @@ final class MinefieldTests: XCTestCase {
         TestCase(input: "n_structure_object_with_trailing_garbage.json"),
         TestCase(input: "n_structure_open_array_apostrophe.json"),
         TestCase(input: "n_structure_open_array_comma.json"),
-//        TestCase(input: "n_structure_open_array_object.json"),
+        TestCase(input: "n_structure_open_array_object.json"),
         TestCase(input: "n_structure_open_array_open_object.json"),
         TestCase(input: "n_structure_open_array_open_string.json"),
         TestCase(input: "n_structure_open_array_string.json"),

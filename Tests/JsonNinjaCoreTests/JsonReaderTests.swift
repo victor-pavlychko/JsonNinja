@@ -24,6 +24,9 @@ import Foundation
 import XCTest
 import JsonNinja
 
+// Test suite ported from swift-corelibs-foundation
+// https://github.com/apple/swift-corelibs-foundation/blob/main/Tests/Foundation/Tests/TestJSONSerialization.swift
+
 final class JsonReaderTests: XCTestCase {
     func testEmptyObject() throws {
         let subject = "{}"
