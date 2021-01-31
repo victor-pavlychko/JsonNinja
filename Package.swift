@@ -19,6 +19,11 @@ let package = Package(
             dependencies: ["JsonNinja"]
         ),
         .testTarget(
+            name: "JsonNinjaMinefieldTests",
+            dependencies: ["JsonNinja"],
+            resources: [.copy("Data")]
+        ),
+        .testTarget(
             name: "JsonNinjaPerformanceTests",
             dependencies: ["JsonNinja"],
             resources: [.copy("Data")]
