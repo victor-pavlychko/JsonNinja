@@ -30,6 +30,6 @@ import Foundation
     }
 
     public var description: String {
-        return "<JsonSourcePointer.Cursor@\(offset)>"
+        return "<JsonCursor@\(offset)>"
     }
 }

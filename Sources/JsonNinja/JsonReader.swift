@@ -23,7 +23,7 @@
 import Foundation
 
 @frozen public struct JsonReader {
-    private let source: JsonSource
+    private let source: JsonReaderSource
 }
 
 extension JsonReader {
@@ -32,7 +32,7 @@ extension JsonReader {
 
 extension JsonReader {
     public init(data: NSData) {
-        self.init(source: JsonSource(owner: data, baseAddress: data.bytes.assumingMemoryBound(to: UInt8.self), count: data.count))
+        self.init(source: JsonReaderSource(owner: data, baseAddress: data.bytes.assumingMemoryBound(to: UInt8.self), count: data.count))
     }
 
     public init(data: Data) {
@@ -227,7 +227,7 @@ extension JsonReader {
                 source.advance(&cursor)
                 return
 
-            case 0x00 ..< 0x20:
+            case 0 ..< 0x20:
                 throw JsonError.unescapedControlCharacter
 
             default:
@@ -262,7 +262,7 @@ extension JsonReader {
                 source.advance(&cursor)
                 return result
 
-            case 0x00 ..< 0x20:
+            case 0 ..< 0x20:
                 throw JsonError.unescapedControlCharacter
 
             default:

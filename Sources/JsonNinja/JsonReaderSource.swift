@@ -23,7 +23,7 @@
 import Foundation
 
 @usableFromInline
-@frozen internal struct JsonSource {
+@frozen internal struct JsonReaderSource {
     private let owner: AnyObject
     private let baseAddress: UnsafePointer<UInt8>
     private let count: Int
@@ -35,7 +35,7 @@ import Foundation
     }
 }
 
-extension JsonSource {
+extension JsonReaderSource {
     @_transparent
     internal func start() -> JsonCursor {
         return JsonCursor(offset: 0)
